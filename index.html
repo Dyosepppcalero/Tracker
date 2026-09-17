@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Roll Book</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;500;600;700&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #E7E3D6; --paper-raised: #F1EEE3; --ink: #1C2A25; --ink-soft: #52625B;
+    --line: #C9C3B0; --accent: #2F5D50; --accent-soft: #DCE6E1; --amber: #B8752E;
+    --amber-soft: #F1E1CB; --clay: #A24E39; --clay-soft: #ECDAD3; --focus: #2F5D50;
+    --shadow: rgba(28,42,37,0.14);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#16211C; --paper-raised:#1E2C25; --ink:#EDE8D9; --ink-soft:#A7B3AC; --line:#37453D;
+      --accent:#6FA692; --accent-soft:#26362E; --amber:#D99A54; --amber-soft:#362A1A;
+      --clay:#D98868; --clay-soft:#3A2620; --focus:#6FA692; --shadow: rgba(0,0,0,0.4);
+    }
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{margin:0; padding:0;}
+  body{ background:var(--paper); color:var(--ink); font-family:"Work Sans", -apple-system, BlinkMacSystemFont, sans-serif; min-height:100vh; }
+  h1,h2,h3,.num{ font-family:"Zilla Slab", Georgia, serif; }
+  button{ font-family:inherit; }
+  :focus-visible{ outline: 2px solid var(--focus); outline-offset: 2px; }
+  .app{ max-width:1180px; margin:0 auto; padding: 18px 16px 60px; }
+
+  .topbar{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; flex-wrap:wrap;}
+  .brand{ display:flex; align-items:baseline; gap:10px; }
+  .brand h1{ font-size:22px; font-weight:600; margin:0; }
+  .brand .sub{ color:var(--ink-soft); font-size:13px; }
+  .sync-state{ font-size:12px; color:var(--ink-soft); display:flex; align-items:center; gap:6px; }
+  .sync-dot{ width:7px; height:7px; border-radius:50%; background:var(--accent); }
+  .sync-dot.err{ background:var(--clay); }
+  .sync-dot.busy{ background:var(--amber); }
+
+  .setup-banner{ background:var(--clay-soft); border:1px solid var(--clay); color:var(--ink); border-radius:10px; padding:14px 16px; margin-bottom:18px; font-size:13.5px; line-height:1.5; }
+  .setup-banner code{ background:var(--paper); padding:2px 5px; border-radius:4px; }
+  .err-banner{ background:var(--clay-soft); border:1px solid var(--clay); color:var(--ink); border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:13px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .err-banner button{ background:var(--clay); color:#fff; border:none; border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer; }
+
+  .tabstrip-wrap{ border-bottom:2px solid var(--line); margin-bottom:18px; }
+  .tabstrip{ display:flex; gap:4px; overflow-x:auto; padding-bottom:1px; }
+  .classtab{ position:relative; flex:0 0 auto; display:flex; align-items:center; gap:8px; padding:10px 16px 12px; background:transparent; border:none; cursor:pointer; color:var(--ink-soft); font-size:14.5px; font-weight:500; white-space:nowrap; border-bottom:3px solid transparent; margin-bottom:-2px; }
+  .classtab .dot{ width:9px; height:9px; border-radius:50%; flex:0 0 auto; }
+  .classtab.active{ color:var(--ink); border-bottom-color: var(--tab-color, var(--accent)); }
+  .classtab-add{ flex:0 0 auto; padding:10px 14px; background:none; border:none; cursor:pointer; color:var(--accent); font-size:20px; font-weight:500; }
+
+  .empty{ text-align:center; padding:60px 20px; color:var(--ink-soft); }
+  .empty h2{ color:var(--ink); font-size:20px; margin-bottom:8px; font-weight:600; }
+  .empty button{ margin-top:16px; }
+
+  .classhead{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
+  .classhead h2{ font-size:19px; font-weight:600; margin:0; }
+  .stat-line{ color:var(--ink-soft); font-size:13.5px; margin-top:2px; }
+  .stat-line .num{ color:var(--ink); font-weight:600; font-size:14.5px; }
+  .iconbtn{ background:var(--paper-raised); border:1px solid var(--line); color:var(--ink); border-radius:8px; padding:7px 12px; font-size:13px; cursor:pointer; font-weight:500; }
+
+  .segwrap{ display:flex; background:var(--paper-raised); border:1px solid var(--line); border-radius:10px; padding:3px; gap:2px; width:max-content; margin-bottom:18px; }
+  .seg{ border:none; background:transparent; padding:8px 16px; border-radius:7px; font-size:13.5px; font-weight:500; color:var(--ink-soft); cursor:pointer; }
+  .seg.active{ background:var(--accent); color:#fff; }
+
+  .field-row{ display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; margin-bottom:12px; }
+  .field{ display:flex; flex-direction:column; gap:5px; }
+  .field label{ font-size:12px; color:var(--ink-soft); font-weight:500; }
+  .field input[type=text]{ background:var(--paper); border:1px solid var(--line); border-radius:7px; padding:8px 10px; font-size:14px; color:var(--ink); font-family:inherit; min-width:160px; }
+  .stepper{ display:flex; align-items:center; border:1px solid var(--line); border-radius:7px; overflow:hidden; background:var(--paper); }
+  .stepper button{ border:none; background:transparent; color:var(--ink); width:32px; height:32px; font-size:16px; cursor:pointer; }
+  .stepper span{ width:28px; text-align:center; font-weight:600; font-size:14px; }
+  .swatches{ display:flex; gap:6px; }
+  .swatch{ width:24px; height:24px; border-radius:50%; border:2px solid transparent; cursor:pointer; }
+  .swatch.selected{ border-color:var(--ink); }
+  .danger-link{ color:var(--clay); background:none; border:none; font-size:13px; cursor:pointer; padding:6px 0; text-decoration:underline; }
+  .primary-btn{ background:var(--accent); color:#fff; border:none; border-radius:8px; padding:9px 16px; font-size:13.5px; font-weight:600; cursor:pointer; }
+  .primary-btn:disabled{ opacity:0.55; cursor:default; }
+  .ghost-btn{ background:transparent; color:var(--accent); border:1px solid var(--accent); border-radius:8px; padding:8px 15px; font-size:13.5px; font-weight:500; cursor:pointer; }
+
+  .modebar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:10px;}
+  .modehint{ font-size:13px; color:var(--ink-soft); }
+  .seatgrid{ display:grid; gap:10px; }
+  .seat{ position:relative; border-radius:10px; padding:10px 10px 8px; min-height:78px; display:flex; flex-direction:column; justify-content:space-between; cursor:pointer; border:1px solid var(--line); background:var(--paper-raised); text-align:left; box-shadow: 0 1px 2px var(--shadow); font-family:inherit; }
+  .seat.empty{ border-style:dashed; background:transparent; align-items:center; justify-content:center; color:var(--ink-soft); box-shadow:none; }
+  .seat.empty .plus{ font-size:20px; line-height:1; }
+  .seat.empty .lbl{ font-size:11.5px; margin-top:2px; }
+  .seat .name{ font-size:13.5px; font-weight:600; color:var(--ink); line-height:1.25; word-break:break-word; }
+  .seat .badge{ align-self:flex-end; font-family:"Zilla Slab", serif; font-weight:700; font-size:15px; background:var(--amber-soft); color:var(--amber); border-radius:20px; padding:1px 9px; min-width:22px; text-align:center; }
+  .seat.edit-mode{ border-color: var(--accent); }
+  .seat .editmark{ position:absolute; top:6px; right:6px; font-size:11px; color:var(--accent); }
+
+  .toast{ position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(12px); background:var(--ink); color:var(--paper); padding:10px 16px; border-radius:24px; font-size:13.5px; display:flex; align-items:center; gap:12px; opacity:0; pointer-events:none; transition: opacity .18s ease, transform .18s ease; box-shadow:0 4px 14px var(--shadow); z-index:50; }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto; }
+  .toast button{ background:none; border:none; color:var(--amber); font-weight:600; font-size:13.5px; cursor:pointer; }
+
+  .modal-bg{ position:fixed; inset:0; background:rgba(0,0,0,0.35); display:flex; align-items:flex-end; justify-content:center; z-index:60; }
+  @media (min-width: 640px){ .modal-bg{ align-items:center; } }
+  .modal{ background:var(--paper); width:100%; max-width:420px; border-radius:14px 14px 0 0; padding:18px; max-height:80vh; overflow-y:auto; }
+  @media (min-width: 640px){ .modal{ border-radius:14px; } }
+  .modal h3{ margin:0 0 4px; font-size:16px; }
+  .modal .hint{ color:var(--ink-soft); font-size:12.5px; margin-bottom:12px; }
+  .roster-pick{ display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
+  .roster-pick button{ text-align:left; padding:10px 12px; border-radius:8px; border:1px solid var(--line); background:var(--paper-raised); color:var(--ink); font-size:14px; cursor:pointer; }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
+  .close-x{ float:right; background:none; border:none; font-size:18px; color:var(--ink-soft); cursor:pointer; }
+
+  .addrow{ display:flex; gap:8px; margin-bottom:16px; }
+  .addrow input{ flex:1; background:var(--paper-raised); border:1px solid var(--line); border-radius:8px; padding:10px 12px; font-size:14px; color:var(--ink); font-family:inherit; }
+  .roster-list{ display:flex; flex-direction:column; gap:2px; }
+  .roster-row{ display:flex; align-items:center; justify-content:space-between; padding:11px 4px; border-bottom:1px solid var(--line); gap:10px; }
+  .roster-row .rname{ font-size:14.5px; font-weight:500; flex:1; }
+  .roster-row .rseat{ font-size:11.5px; color:var(--ink-soft); }
+  .roster-row .rpoints{ font-family:"Zilla Slab",serif; font-weight:700; color:var(--amber); font-size:14px; min-width:34px; text-align:right; }
+  .remove-x{ background:none; border:none; color:var(--clay); font-size:18px; cursor:pointer; padding:2px 4px; }
+
+  .assign-card{ border:1px solid var(--line); border-radius:10px; margin-bottom:10px; overflow:hidden; background:var(--paper-raised); }
+  .assign-top{ display:flex; align-items:center; justify-content:space-between; padding:13px 14px; cursor:pointer; gap:10px; }
+  .assign-title{ font-size:14.5px; font-weight:600; }
+  .assign-meta{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
+  .assign-count{ font-size:12.5px; color:var(--accent); font-weight:600; white-space:nowrap; }
+  .assign-body{ border-top:1px solid var(--line); padding:8px 14px 12px; display:none; }
+  .assign-card.open .assign-body{ display:block; }
+  .chevron{ transition: transform .15s ease; color:var(--ink-soft); }
+  .assign-card.open .chevron{ transform:rotate(90deg); }
+  .sub-row{ display:flex; align-items:center; justify-content:space-between; padding:8px 2px; border-bottom:1px solid var(--line); }
+  .sub-row:last-child{ border-bottom:none; }
+  .sub-name{ font-size:14px; }
+  .sub-toggle{ border:1px solid var(--line); background:var(--paper); border-radius:20px; padding:5px 13px; font-size:12px; font-weight:600; cursor:pointer; color:var(--ink-soft); }
+  .sub-toggle.done{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
+  .assign-del{ background:none; border:none; color:var(--clay); font-size:12px; cursor:pointer; margin-top:8px; }
+  .empty-inline{ color:var(--ink-soft); font-size:13.5px; padding:20px 4px; text-align:center; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ======================================================================
+  // 1. PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE (see Code.gs setup notes)
+  // ======================================================================
+  var API_URL = "PASTE_YOUR_WEB_APP_URL_HERE";
+  // ======================================================================
+
+  var COLORS = ["#2F5D50","#B8752E","#A24E39","#4C6E92","#6E5192","#5E7A2E"];
+
+  var raw = { classes:[], students:[], seats:[], pointsLog:[], assignments:[], submissions:[] };
+  var ui = { activeClassId:null, view:"seats", editSeats:false, modal:null, busy:false, error:null, loaded:false };
+  var undoTimer = null;
+  var toastState = { visible:false, msg:"", onUndo:null };
+
+  function uid(){ return "id-" + Math.random().toString(36).slice(2) + Date.now(); }
+
+  /* ---------------- API layer ---------------- */
+  function apiGet(){
+    return fetch(API_URL, { method:"GET" }).then(function(r){ return r.json(); });
+  }
+  function apiPost(action, payload){
+    return fetch(API_URL, {
+      method:"POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" }, // avoids CORS preflight against Apps Script
+      body: JSON.stringify({ action:action, payload:payload })
+    }).then(function(r){ return r.json(); });
+  }
+
+  function applyState(data){
+    if (data && data.error){ throw new Error(data.error); }
+    raw = data;
+    if (!ui.activeClassId && raw.classes.length) ui.activeClassId = raw.classes[0].id;
+    ui.error = null;
+    ui.loaded = true;
+  }
+
+  function refresh(){
+    ui.busy = true; render();
+    return apiGet().then(function(data){
+      applyState(data); ui.busy = false; render();
+    }).catch(function(e){
+      ui.busy = false; ui.error = String(e.message || e); ui.loaded = true; render();
+    });
+  }
+
+  function mutate(action, payload){
+    ui.busy = true; render();
+    return apiPost(action, payload).then(function(data){
+      applyState(data); ui.busy = false; render();
+    }).catch(function(e){
+      ui.busy = false; ui.error = String(e.message || e); render();
+    });
+  }
+
+  /* ---------------- derived model helpers ---------------- */
+  function classesModel(){
+    return raw.classes.map(function(c){ return { id:c.id, name:c.name, color:c.color, rows:Number(c.rows)||4, cols:Number(c.cols)||5 }; });
+  }
+  function activeClass(){
+    var found = raw.classes.find(function(c){ return c.id===ui.activeClassId; });
+    if (!found) return null;
+    return { id:found.id, name:found.name, color:found.color, rows:Number(found.rows)||4, cols:Number(found.cols)||5 };
+  }
+  function rosterFor(classId){
+    return raw.students.filter(function(s){ return s.classId===classId; }).map(function(s){ return {id:s.id, name:s.name}; });
+  }
+  function seatMapFor(classId){
+    var map = {};
+    raw.seats.forEach(function(s){ if (s.classId===classId) map[Number(s.seatIndex)] = s.studentId; });
+    return map;
+  }
+  function pointsFor(classId){
+    var totals = {};
+    raw.pointsLog.forEach(function(r){
+      if (r.classId!==classId) return;
+      totals[r.studentId] = (totals[r.studentId]||0) + Number(r.delta);
+    });
+    return totals;
+  }
+  function totalPoints(classId){
+    var t = pointsFor(classId);
+    return Object.keys(t).reduce(function(s,k){ return s+t[k]; }, 0);
+  }
+  function assignmentsFor(classId){
+    return raw.assignments.filter(function(a){ return a.classId===classId; });
+  }
+  function submissionsFor(assignmentId){
+    var map = {};
+    raw.submissions.forEach(function(s){ if (s.assignmentId===assignmentId) map[s.studentId] = !!s.submitted && s.submitted!=="FALSE"; });
+    return map;
+  }
+  function studentName(classId, id){
+    var s = raw.students.find(function(x){ return x.id===id; });
+    return s ? s.name : "";
+  }
+
+  /* ---------------- DOM helper ---------------- */
+  function el(tag, attrs, children){
+    var e = document.createElement(tag);
+    attrs = attrs || {};
+    for (var k in attrs){
+      if (k==="class") e.className = attrs[k];
+      else if (k==="html") e.innerHTML = attrs[k];
+      else if (k.indexOf("on")===0) e.addEventListener(k.slice(2), attrs[k]);
+      else e.setAttribute(k, attrs[k]);
+    }
+    (children||[]).forEach(function(c){
+      if (c==null) return;
+      if (typeof c==="string") e.appendChild(document.createTextNode(c));
+      else e.appendChild(c);
+    });
+    return e;
+  }
+
+  var root = document.getElementById("app");
+
+  function render(){
+    root.innerHTML = "";
+    root.appendChild(renderTopbar());
+
+    if (API_URL.indexOf("PASTE_YOUR") === 0){
+      root.appendChild(el("div",{class:"setup-banner"},[
+        el("strong",{},["Setup needed: "]),
+        "Open ", el("code",{},["index.html"]), " and paste your Google Apps Script Web App URL into the ",
+        el("code",{},["API_URL"]), " constant near the top of the script. See the setup notes in ",
+        el("code",{},["Code.gs"]), " for how to get that URL."
+      ]));
+      return;
+    }
+
+    if (!ui.loaded){
+      root.appendChild(el("div",{class:"empty"},[el("h2",{},["Loading your roll book\u2026"])]));
+      refresh();
+      return;
+    }
+
+    if (ui.error){
+      root.appendChild(el("div",{class:"err-banner"},[
+        el("span",{},["Couldn't reach your Google Sheet. Check your internet connection and that the Apps Script URL is correct. (" + ui.error + ")"]),
+        el("button",{onclick:function(){ ui.error=null; refresh(); }},["Retry"])
+      ]));
+    }
+
+    root.appendChild(renderTabstrip());
+
+    var cls = activeClass();
+    if (!cls){
+      root.appendChild(el("div", {class:"empty"}, [
+        el("h2", {}, ["No class yet"]),
+        el("div", {}, ["Add your first class to set up a seat plan and start tracking recitation."]),
+        el("button", {class:"primary-btn", onclick: function(){ openModal("newclass"); }}, ["+ Add a class"])
+      ]));
+      renderModal();
+      return;
+    }
+
+    root.appendChild(renderClassHead(cls));
+    root.appendChild(renderSeg());
+
+    if (ui.view==="seats") root.appendChild(renderSeats(cls));
+    else if (ui.view==="submissions") root.appendChild(renderSubmissions(cls));
+    else root.appendChild(renderRoster(cls));
+
+    root.appendChild(renderToast());
+    renderModal();
+  }
+
+  function renderTopbar(){
+    var dotClass = "sync-dot" + (ui.error ? " err" : (ui.busy ? " busy" : ""));
+    var label = ui.error ? "Sync error" : (ui.busy ? "Syncing\u2026" : "Synced to Sheet");
+    return el("div", {class:"topbar"}, [
+      el("div", {class:"brand"}, [
+        el("h1", {}, ["Roll Book"]),
+        el("span", {class:"sub"}, ["recitation & submissions"])
+      ]),
+      el("div",{class:"sync-state"},[ el("span",{class:dotClass}), label ])
+    ]);
+  }
+
+  function renderTabstrip(){
+    var strip = el("div", {class:"tabstrip"});
+    classesModel().forEach(function(c){
+      var active = c.id===ui.activeClassId;
+      strip.appendChild(el("button", {
+        class:"classtab"+(active?" active":""), style:"--tab-color:"+c.color,
+        onclick:function(){ ui.activeClassId=c.id; ui.view="seats"; ui.editSeats=false; render(); }
+      }, [ el("span",{class:"dot", style:"background:"+c.color}), el("span",{},[c.name]) ]));
+    });
+    strip.appendChild(el("button", {class:"classtab-add", title:"Add class", onclick:function(){ openModal("newclass"); }}, ["+"]));
+    return el("div", {class:"tabstrip-wrap"}, [strip]);
+  }
+
+  function renderClassHead(cls){
+    var roster = rosterFor(cls.id);
+    return el("div", {class:"classhead"}, [
+      el("div", {}, [
+        el("h2", {}, [cls.name]),
+        el("div", {class:"stat-line"}, [
+          el("span",{class:"num"},[String(roster.length)]), " students seated \u00b7 ",
+          el("span",{class:"num"},[String(totalPoints(cls.id))]), " recitation points logged"
+        ])
+      ]),
+      el("button", {class:"iconbtn", onclick:function(){ openModal("classsettings"); }}, ["Class settings"])
+    ]);
+  }
+
+  function renderSeg(){
+    var items = [["seats","Seat plan"],["submissions","Submissions"],["roster","Roster"]];
+    var wrap = el("div", {class:"segwrap"});
+    items.forEach(function(it){
+      wrap.appendChild(el("button", {
+        class:"seg"+(ui.view===it[0]?" active":""),
+        onclick:function(){ ui.view=it[0]; if(it[0]!=="seats") ui.editSeats=false; render(); }
+      }, [it[1]]));
+    });
+    return wrap;
+  }
+
+  /* ---- seats ---- */
+  function renderSeats(cls){
+    var roster = rosterFor(cls.id);
+    var seatMap = seatMapFor(cls.id);
+    var points = pointsFor(cls.id);
+    var wrap = el("div", {});
+    wrap.appendChild(el("div", {class:"modebar"}, [
+      el("div", {class:"modehint"}, [ ui.editSeats ? "Edit mode \u2014 tap a seat to assign or change who sits there." : "Tap a student's seat each time they recite to add a point." ]),
+      el("button", { class: ui.editSeats ? "primary-btn":"ghost-btn", onclick:function(){ ui.editSeats=!ui.editSeats; render(); } }, [ui.editSeats?"Done editing":"Edit seating"])
+    ]));
+
+    if (roster.length===0){
+      wrap.appendChild(el("div",{class:"empty-inline"},["Add students in the Roster tab first, then come back to seat them."]));
+      return wrap;
+    }
+
+    var total = cls.rows*cls.cols;
+    var grid = el("div", {class:"seatgrid", style:"grid-template-columns:repeat("+cls.cols+", 1fr);"});
+    for (var i=0;i<total;i++){
+      grid.appendChild(renderSeat(cls, i, seatMap, points));
+    }
+    wrap.appendChild(grid);
+    return wrap;
+  }
+
+  function renderSeat(cls, idx, seatMap, points){
+    var studentId = seatMap[idx];
+    if (!studentId){
+      return el("button", { class:"seat empty"+(ui.editSeats?" edit-mode":""), onclick:function(){ if (ui.editSeats) openModal("assignseat", {seatIndex: idx}); } }, [
+        el("span",{class:"plus"},["+"]), el("span",{class:"lbl"},["Empty seat"])
+      ]);
+    }
+    var name = studentName(cls.id, studentId);
+    var pts = points[studentId] || 0;
+    return el("button", { class:"seat"+(ui.editSeats?" edit-mode":""), disabled: ui.busy ? "true" : null, onclick:function(){
+      if (ui.editSeats) openModal("assignseat", {seatIndex: idx});
+      else giveRecitationPoint(cls, studentId);
+    } }, [
+      ui.editSeats ? el("span",{class:"editmark"},["change"]) : null,
+      el("span",{class:"name"},[name]),
+      el("span",{class:"badge"},[String(pts)])
+    ]);
+  }
+
+  function giveRecitationPoint(cls, studentId){
+    mutate("givePoint", { classId: cls.id, studentId: studentId }).then(function(){
+      showToast(studentName(cls.id, studentId) + " +1 point", function(){
+        mutate("undoPoint", { classId: cls.id, studentId: studentId });
+      });
+    });
+  }
+
+  function showToast(msg, onUndo){
+    toastState = { visible:true, msg:msg, onUndo:onUndo };
+    clearTimeout(undoTimer);
+    undoTimer = setTimeout(function(){ toastState.visible=false; render(); }, 4000);
+    render();
+  }
+  function renderToast(){
+    return el("div", {class:"toast"+(toastState.visible?" show":"")}, [
+      el("span", {}, [toastState.msg]),
+      toastState.onUndo ? el("button", {onclick:function(){
+        clearTimeout(undoTimer);
+        var fn = toastState.onUndo;
+        toastState = {visible:false,msg:"",onUndo:null};
+        fn();
+      }}, ["Undo"]) : null
+    ]);
+  }
+
+  /* ---- roster ---- */
+  function renderRoster(cls){
+    var roster = rosterFor(cls.id);
+    var seatMap = seatMapFor(cls.id);
+    var seatedIds = Object.values(seatMap);
+    var points = pointsFor(cls.id);
+    var wrap = el("div", {});
+    var input;
+    wrap.appendChild(el("div", {class:"addrow"}, [
+      (input = el("input", {type:"text", placeholder:"Add a student's name", onkeydown:function(e){ if(e.key==="Enter") addStudent(); }})),
+      el("button", {class:"primary-btn", onclick:addStudent}, ["Add"])
+    ]));
+    function addStudent(){
+      var v = input.value.trim();
+      if (!v) return;
+      mutate("addStudent", { classId: cls.id, name: v });
+    }
+
+    if (roster.length===0){
+      wrap.appendChild(el("div",{class:"empty-inline"},["No students yet. Add your class list above."]));
+      return wrap;
+    }
+
+    var list = el("div",{class:"roster-list"});
+    roster.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(s){
+      list.appendChild(el("div",{class:"roster-row"},[
+        el("span",{class:"rname"},[s.name]),
+        el("span",{class:"rseat"},[seatedIds.indexOf(s.id)>=0 ? "Seated" : "Not seated"]),
+        el("span",{class:"rpoints"},[String(points[s.id]||0)]),
+        el("button",{class:"remove-x", title:"Remove student", onclick:function(){
+          if (confirm('Remove ' + s.name + ' from this class?')) mutate("removeStudent", { studentId: s.id });
+        }},["\u00d7"])
+      ]));
+    });
+    wrap.appendChild(list);
+    return wrap;
+  }
+
+  /* ---- submissions ---- */
+  var openAssignments = {};
+  function renderSubmissions(cls){
+    var roster = rosterFor(cls.id);
+    var assigns = assignmentsFor(cls.id);
+    var wrap = el("div", {});
+    var input;
+    wrap.appendChild(el("div", {class:"addrow"}, [
+      (input = el("input", {type:"text", placeholder:"New assignment or task title", onkeydown:function(e){ if(e.key==="Enter") addAssignment(); }})),
+      el("button", {class:"primary-btn", onclick:addAssignment}, ["Add"])
+    ]));
+    function addAssignment(){
+      var v = input.value.trim();
+      if (!v) return;
+      mutate("addAssignment", { classId: cls.id, title: v });
+    }
+
+    if (assigns.length===0){
+      wrap.appendChild(el("div",{class:"empty-inline"},["No assignments yet. Add one above to start tracking submissions."]));
+      return wrap;
+    }
+    if (roster.length===0){
+      wrap.appendChild(el("div",{class:"empty-inline"},["Add students in the Roster tab to track their submissions."]));
+    }
+
+    assigns.forEach(function(a){
+      var subs = submissionsFor(a.id);
+      var done = roster.filter(function(s){ return subs[s.id]; }).length;
+      var isOpen = !!openAssignments[a.id];
+      var card = el("div",{class:"assign-card"+(isOpen?" open":"")});
+      card.appendChild(el("div",{class:"assign-top", onclick:function(){ openAssignments[a.id]=!openAssignments[a.id]; render(); }},[
+        el("div",{},[
+          el("div",{class:"assign-title"},[a.title]),
+          el("div",{class:"assign-meta"},[new Date(a.createdAt).toLocaleDateString(undefined,{month:"short",day:"numeric"})])
+        ]),
+        el("div",{style:"display:flex;align-items:center;gap:10px;"},[
+          el("span",{class:"assign-count"},[done+" / "+roster.length]),
+          el("span",{class:"chevron"},["\u203a"])
+        ])
+      ]));
+      var body = el("div",{class:"assign-body"});
+      roster.slice().sort(function(x,y){return x.name.localeCompare(y.name);}).forEach(function(s){
+        var isDone = !!subs[s.id];
+        body.appendChild(el("div",{class:"sub-row"},[
+          el("span",{class:"sub-name"},[s.name]),
+          el("button",{class:"sub-toggle"+(isDone?" done":""), onclick:function(){
+            mutate("toggleSubmission", { assignmentId: a.id, studentId: s.id });
+          }},[isDone?"Submitted":"Not yet"])
+        ]));
+      });
+      body.appendChild(el("button",{class:"assign-del", onclick:function(){
+        if (confirm('Delete assignment "'+a.title+'"?')) mutate("deleteAssignment", { assignmentId: a.id });
+      }},["Delete assignment"]));
+      card.appendChild(body);
+      wrap.appendChild(card);
+    });
+    return wrap;
+  }
+
+  /* ---------------- modals ---------------- */
+  function openModal(kind, payload){ ui.modal = {kind:kind, payload:payload||{}}; render(); }
+  function closeModal(){ ui.modal = null; render(); }
+
+  function renderModal(){
+    if (!ui.modal) return;
+    var box;
+    if (ui.modal.kind==="newclass") box = modalNewClass();
+    else if (ui.modal.kind==="classsettings") box = modalClassSettings();
+    else if (ui.modal.kind==="assignseat") box = modalAssignSeat(ui.modal.payload.seatIndex);
+    if (!box) return;
+    var bg = el("div",{class:"modal-bg", onclick:function(e){ if(e.target===bg) closeModal(); }},[box]);
+    root.appendChild(bg);
+  }
+
+  function modalNewClass(){
+    var input;
+    var box = el("div",{class:"modal"},[
+      el("button",{class:"close-x", onclick:closeModal},["\u00d7"]),
+      el("h3",{},["New class"]),
+      el("div",{class:"hint"},["Give this class or section a name. You can add students and set up seating after."]),
+      (input = el("input",{type:"text", placeholder:"e.g. Grade 8 \u2013 Section B", style:"width:100%;background:var(--paper-raised);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--ink);font-family:inherit;"})),
+      el("div",{class:"modal-actions"},[
+        el("button",{class:"ghost-btn", onclick:closeModal},["Cancel"]),
+        el("button",{class:"primary-btn", onclick:function(){
+          var v = input.value.trim();
+          if (!v) return;
+          var color = COLORS[raw.classes.length % COLORS.length];
+          closeModal();
+          mutate("createClass", { name: v, color: color, rows:4, cols:5 }).then(function(){
+            var created = raw.classes.find(function(c){ return c.name===v; });
+            if (created) ui.activeClassId = created.id;
+            render();
+          });
+        }},["Create class"])
+      ])
+    ]);
+    setTimeout(function(){ input.focus(); }, 30);
+    return box;
+  }
+
+  function modalClassSettings(){
+    var cls = activeClass();
+    if (!cls) return null;
+    var nameInput, rows = cls.rows, cols = cls.cols, color = cls.color;
+    var rowsSpan, colsSpan;
+    var swWrap = el("div",{class:"swatches"});
+    COLORS.forEach(function(c){
+      var sw = el("button",{ class:"swatch"+(c===color?" selected":""), style:"background:"+c, type:"button",
+        onclick:function(){ color=c; Array.prototype.forEach.call(swWrap.children,function(ch){ch.classList.remove("selected");}); sw.classList.add("selected"); } });
+      swWrap.appendChild(sw);
+    });
+
+    var box = el("div",{class:"modal"},[
+      el("button",{class:"close-x", onclick:closeModal},["\u00d7"]),
+      el("h3",{},["Class settings"]),
+      el("div",{class:"field", style:"margin-bottom:12px;"},[ el("label",{},["Class name"]), (nameInput = el("input",{type:"text", value:cls.name})) ]),
+      el("div",{class:"field-row"},[
+        el("div",{class:"field"},[ el("label",{},["Rows"]), el("div",{class:"stepper"},[
+          el("button",{onclick:function(){ if(rows>1){rows--; rowsSpan.textContent=rows;} }},["\u2212"]),
+          (rowsSpan=el("span",{},[String(rows)])),
+          el("button",{onclick:function(){ if(rows<12){rows++; rowsSpan.textContent=rows;} }},["+"])
+        ])]),
+        el("div",{class:"field"},[ el("label",{},["Columns"]), el("div",{class:"stepper"},[
+          el("button",{onclick:function(){ if(cols>1){cols--; colsSpan.textContent=cols;} }},["\u2212"]),
+          (colsSpan=el("span",{},[String(cols)])),
+          el("button",{onclick:function(){ if(cols<12){cols++; colsSpan.textContent=cols;} }},["+"])
+        ])])
+      ]),
+      el("div",{class:"field", style:"margin-bottom:6px;"},[ el("label",{},["Tab color"]), swWrap ]),
+      el("div",{style:"margin-top:8px;"},[
+        el("button",{class:"danger-link", onclick:function(){
+          if (confirm('Delete "'+cls.name+'" and all its data? This cannot be undone.')){
+            closeModal();
+            mutate("deleteClass", { classId: cls.id }).then(function(){
+              ui.activeClassId = raw.classes.length ? raw.classes[0].id : null; render();
+            });
+          }
+        }},["Delete this class"])
+      ]),
+      el("div",{class:"modal-actions"},[
+        el("button",{class:"ghost-btn", onclick:closeModal},["Cancel"]),
+        el("button",{class:"primary-btn", onclick:function(){
+          var v = nameInput.value.trim() || cls.name;
+          closeModal();
+          mutate("updateClass", { classId: cls.id, name:v, color:color, rows:rows, cols:cols });
+        }},["Save"])
+      ])
+    ]);
+    return box;
+  }
+
+  function modalAssignSeat(seatIndex){
+    var cls = activeClass();
+    if (!cls) return null;
+    var roster = rosterFor(cls.id);
+    var seatMap = seatMapFor(cls.id);
+    var currentId = seatMap[seatIndex];
+    var list = el("div",{class:"roster-pick"});
+    if (roster.length===0) list.appendChild(el("div",{class:"hint"},["No students in the roster yet. Add students from the Roster tab first."]));
+    roster.slice().sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(s){
+      var elsewhere = Object.keys(seatMap).some(function(k){ return seatMap[k]===s.id && Number(k)!==seatIndex; });
+      list.appendChild(el("button",{onclick:function(){
+        closeModal();
+        mutate("assignSeat", { classId: cls.id, seatIndex: seatIndex, studentId: s.id });
+      }},[s.name + (elsewhere ? "  (move here)" : "")]));
+    });
+    var box = el("div",{class:"modal"},[
+      el("button",{class:"close-x", onclick:closeModal},["\u00d7"]),
+      el("h3",{},["Assign this seat"]),
+      el("div",{class:"hint"},["Choose who sits here."]),
+      list,
+      el("div",{class:"modal-actions"},[
+        currentId ? el("button",{class:"ghost-btn", onclick:function(){ closeModal(); mutate("clearSeat", { classId: cls.id, seatIndex: seatIndex }); }},["Clear seat"]) : null,
+        el("button",{class:"ghost-btn", onclick:closeModal},["Cancel"])
+      ])
+    ]);
+    return box;
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
