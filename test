@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roll Book — Connection Test</title>
+<style>
+  body{ font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width:640px; margin:40px auto; padding:0 20px; line-height:1.6; color:#1C2A25; background:#E7E3D6; }
+  h1{ font-size:22px; }
+  .box{ background:#F1EEE3; border:1px solid #C9C3B0; border-radius:10px; padding:18px 20px; margin:16px 0; font-size:15px; }
+  .ok{ border-color:#2F5D50; background:#DCE6E1; }
+  .bad{ border-color:#A24E39; background:#ECDAD3; }
+  .label{ font-weight:700; display:block; margin-bottom:6px; }
+  code{ background:#fff; padding:2px 6px; border-radius:4px; word-break:break-all; font-size:13px; }
+  pre{ white-space:pre-wrap; word-break:break-all; background:#fff; padding:10px; border-radius:6px; font-size:12px; max-height:200px; overflow:auto; }
+</style>
+</head>
+<body>
+<h1>Roll Book — Connection Test</h1>
+<p>This page checks whether your website can talk to your Google Sheet. No technical steps needed — just read what it says below.</p>
+<div id="result" class="box">Testing… give it a few seconds.</div>
+
+<script>
+  // Uses the exact same API_URL as index.html — copy it in below to match.
+  var API_URL = "https://script.google.com/macros/s/AKfycbyjFRAagS0UAjgoUr4wI53EDOrvXp5hOImxhrQoY34X1Fq23ZMTBj0FCY4q2IXrdirHyw/exec";
+
+  var box = document.getElementById("result");
+
+  function show(kind, html){
+    box.className = "box " + kind;
+    box.innerHTML = html;
+  }
+
+  if (API_URL.indexOf("PASTE_YOUR") === 0){
+    show("bad", "<span class='label'>⚠️ Not set up yet</span>The API_URL at the top of this file still says the placeholder text. You need to paste your Google Apps Script Web App URL in here (the same one that goes into index.html).");
+  } else {
+    show("bad", "<span class='label'>🔄 Testing connection to:</span><code>" + API_URL + "</code>");
+    fetch(API_URL, { method: "GET" })
+      .then(function(r){
+        return r.text().then(function(text){ return { status: r.status, ok: r.ok, text: text }; });
+      })
+      .then(function(res){
+        var looksLikeJson = res.text.trim().indexOf("{") === 0;
+        if (res.ok && looksLikeJson){
+          show("ok", "<span class='label'>✅ Connection works!</span>Your website should be able to load and save data. Status code: " + res.status + "<br><br>Response received:<pre>" + res.text.slice(0,500) + "</pre>If index.html is still showing a blank page or stuck loading, the problem is something else — let's look at that next.");
+        } else if (res.ok && !looksLikeJson){
+          show("bad", "<span class='label'>⚠️ Got a response, but not the data expected</span>Status code: " + res.status + ". This usually means the Web App's access setting isn't \"Anyone\" — Google is sending back a sign-in page instead of your data.<br><br>Fix: In Apps Script → Deploy → Manage deployments → edit (pencil) → make sure \"Who has access\" is set to <b>Anyone</b>, then click Deploy again.<br><br>What came back:<pre>" + res.text.slice(0,500) + "</pre>");
+        } else {
+          show("bad", "<span class='label'>❌ Got an error response</span>Status code: " + res.status + "<pre>" + res.text.slice(0,500) + "</pre>");
+        }
+      })
+      .catch(function(err){
+        show("bad", "<span class='label'>❌ Could not reach it at all</span>Error: " + err.message + "<br><br>Most likely causes:<br>• The URL was copied wrong or is missing <code>/exec</code> at the end<br>• The Apps Script hasn't been deployed as a Web App yet<br>• No internet connection right now");
+      });
+  }
+</script>
+</body>
+</html>
